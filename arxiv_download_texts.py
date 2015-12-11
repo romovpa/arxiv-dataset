@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+"""
+Create plain text dataset of arXiv papers, using PDF archives.
+
+Requirements:
+  - pip install boto requests lxml
+  - apt-get install poppler-utils
+"""
 
 import os
 import sys
