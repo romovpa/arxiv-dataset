@@ -75,7 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--txt-dir', default='txt')
     parser.add_argument('--pdf-dir', default='pdf')
-    parser.add_argument('--remove-processed', default=False, action='store_true')    
+    parser.add_argument('--error-pdf-dir', default='error_pdf')
+    parser.add_argument('--remove-processed', default=False, action='store_true')
     parser.add_argument('--list', default=False, action='store_true')
     parser.add_argument('-s', '--start-month')
     parser.add_argument('-f', '--finish-month')
@@ -100,7 +101,7 @@ if __name__ == '__main__':
         total_size = 0
         for archive in selected_archives:
             size_mb = archive['size'] / 1024**2
-                print '    {filename}    {size_mb} Mb'.format(size_mb=size_mb, **archive)
+            print '    {filename}    {size_mb} Mb'.format(size_mb=size_mb, **archive)
             total_size += archive['size']
         print 'Total %d Mb' % (total_size / 1024**2)
         sys.exit(0)
@@ -109,6 +110,8 @@ if __name__ == '__main__':
         os.mkdir(args.pdf_dir)
     if not os.path.exists(args.txt_dir):
         os.mkdir(args.txt_dir)
+    if not os.path.exists(args.error_pdf_dir):
+        os.mkdir(args.error_pdf_dir)
     
     for archive in selected_archives:
         archive_name = os.path.split(archive['filename'])[1]
@@ -148,6 +151,9 @@ if __name__ == '__main__':
                     logger.debug('Successfully converted %s to %s' % (pdf_name, txt_path))
             except subprocess.CalledProcessError as e:
                 logger.error('Cannot convert PDF: %s from %s' % (pdf_name, archive_name))
+                
+                if args.error_pdf_dir:
+                    shutil.copy(pdf_path, args.error_pdf_dir)
 
         logger.debug('Removing temp dir %s' % tmp_dir)
         shutil.rmtree(tmp_dir)
