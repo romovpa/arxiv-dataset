@@ -101,10 +101,11 @@ def parse_metadata_arXivRaw(record_element):
     submitter = first(arxiv_element.xpath('arxiv:submitter/text()', namespaces=ns))
     
     versions = []
-    for version_element in arxiv_element.find('arxiv:version', namespaces=ns):
+    for version_element in arxiv_element.findall('arxiv:version', namespaces=ns):
         version = version_element.attrib['version']
-        date = first(version_element.xpath('arxiv:date', namespaces=ns))
-        size = first(version_element.xpath('arxiv:size', namespaces=ns))
+        
+        date = first(version_element.xpath('arxiv:date/text()', namespaces=ns))
+        size = first(version_element.xpath('arxiv:size/text()', namespaces=ns))
         date = dateutil.parser.parse(date).strftime('%Y-%m-%d %H:%M:%S')
         versions.append({'version': version, 'size': size, 'date': date})
     
@@ -117,6 +118,7 @@ def parse_metadata_arXivRaw(record_element):
 
 def collect_metadata(metadata_collection, metadata_dir):
     
+    """
     logger.info('Start reading arXiv metadata')
     
     next_metadata_file_id = 0
@@ -155,7 +157,7 @@ def collect_metadata(metadata_collection, metadata_dir):
 
         next_metadata_file_id += 1
 
-        
+    """    
     logger.info('Start reading arXivRaw metadata')
     
     next_metadata_file_id = 0
@@ -182,10 +184,7 @@ def collect_metadata(metadata_collection, metadata_dir):
                 arxiv_id = obj.pop('arxiv_id')
                 metadata_collection.update_one(
                     {'_id': arxiv_id},
-                    {
-                        key: {'$set': value}
-                        for key, value in obj.iteritems()
-                    },
+                    {'$set': obj},
                 )
             else:
                 record_xml = etree.tostring(record_element)
@@ -197,31 +196,31 @@ def collect_metadata(metadata_collection, metadata_dir):
         next_metadata_file_id += 1
 
 
-def write_to_jsonlines_file(metadata_collection, jsonlines_file):
-    raise NotImplementedError()
-    
+def write_to_jsonlines_file(metadata_collection, jsonlines_file):  
     logger.info('Writing metadata to jsonlines file')
-    records = list(metadata_collection.find({}, {'_id': True}))
+    records = list(metadata_collection.find({}, {'_id': True, 'info.created': True}))
     
-    #logger.info('Sort records in jsonlines file by ???')
-    #records.sort(key=???)
+    logger.info('Sort records in jsonlines file by ???')
+    records.sort(key=lambda record: '%s %s' % (record['info']['created'], record['_id']))
     
-    for record in records:
+    for n, record in enumerate(records):
         metadata_record = metadata_collection.find_one(record['_id'])
         jsonlines_file.write(json.dumps(metadata_record, separators=(',', ':')) + '\n')
+        if n % 1000 == 0 and n > 0:
+            logger.info('Writed %d records' % n)
     
         
 if __name__ == '__main__':
     logging.basicConfig(
         format='[%(asctime)s] %(levelname)s %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        level=logging.INFO,
+        level=logging.DEBUG,
     )
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default='mongodb://localhost:27017/arxiv')
     parser.add_argument('--drop-collection', default=False, action='store_true')
-    parser.add_argument('--read-metadata-dir', default='metadata')
+    parser.add_argument('--read-metadata-dir')
     parser.add_argument('--write-jsonlines-file', type=argparse.FileType('w'))
     args = parser.parse_args()
     
